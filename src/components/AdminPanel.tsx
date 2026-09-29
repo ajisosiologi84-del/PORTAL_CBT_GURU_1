@@ -195,6 +195,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [strictAntiCheating, setStrictAntiCheating] = useState<boolean>(config.examSchedule?.strictAntiCheating !== false);
   const [requireOfflineMode, setRequireOfflineMode] = useState<boolean>(config.examSchedule?.requireOfflineMode === true);
   const [maxCheatingAllowed, setMaxCheatingAllowed] = useState<number>(config.examSchedule?.maxCheatingAllowed || 3);
+  const [hideAdminMenuFromLogin, setHideAdminMenuFromLogin] = useState<boolean>(
+    config.hideAdminMenuFromLogin !== undefined
+      ? config.hideAdminMenuFromLogin
+      : config.examSchedule?.hideAdminMenuFromLogin !== false
+  );
   const [enableWarningAudio, setEnableWarningAudio] = useState<boolean>(config.enableWarningAudio !== false);
   const [customWarningAudioUrl, setCustomWarningAudioUrl] = useState<string>(config.customWarningAudioUrl || '');
 
@@ -597,7 +602,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         if (tConfig.examSchedule.strictAntiCheating !== undefined) setStrictAntiCheating(tConfig.examSchedule.strictAntiCheating);
         if (tConfig.examSchedule.requireOfflineMode !== undefined) setRequireOfflineMode(tConfig.examSchedule.requireOfflineMode);
         if (tConfig.examSchedule.maxCheatingAllowed !== undefined) setMaxCheatingAllowed(tConfig.examSchedule.maxCheatingAllowed);
+        if (tConfig.examSchedule.hideAdminMenuFromLogin !== undefined) setHideAdminMenuFromLogin(tConfig.examSchedule.hideAdminMenuFromLogin);
       }
+      if (tConfig.hideAdminMenuFromLogin !== undefined) setHideAdminMenuFromLogin(tConfig.hideAdminMenuFromLogin);
     } else if (config) {
       if (config.examToken) setCurrentToken(config.examToken);
       if (config.duration) setDurationInput(config.duration);
@@ -610,6 +617,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       if (config.driveDownloadUrl !== undefined) setDriveDownloadUrlInput(config.driveDownloadUrl || '');
       if (config.youtubeGuideUrl !== undefined) setYoutubeGuideUrlInput(config.youtubeGuideUrl || '');
       if (config.mapelList && config.mapelList.length > 0) setMapelList(config.mapelList);
+      if (config.hideAdminMenuFromLogin !== undefined) {
+        setHideAdminMenuFromLogin(config.hideAdminMenuFromLogin);
+      } else if (config.examSchedule?.hideAdminMenuFromLogin !== undefined) {
+        setHideAdminMenuFromLogin(config.examSchedule.hideAdminMenuFromLogin);
+      }
       if (config.examSchedule) {
         setScheduleStartTime(config.examSchedule.startTime || '');
         setScheduleEndTime(config.examSchedule.endTime || '');
@@ -1144,6 +1156,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         strictAntiCheating,
         requireOfflineMode,
         maxCheatingAllowed,
+        hideAdminMenuFromLogin,
       },
     };
 
@@ -1151,6 +1164,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       ...(config.teacherConfigs || {}),
       [targetKg]: updatedTeacherConfig,
     };
+
+    try {
+      localStorage.setItem('cbt_hide_admin_menu', String(hideAdminMenuFromLogin));
+    } catch (e) {}
 
     onSaveConfig({
       ...config,
@@ -1163,6 +1180,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       randomizeOptions: randomizeOptionsInput,
       enableWarningAudio,
       customWarningAudioUrl: customWarningAudioUrl.trim() || undefined,
+      hideAdminMenuFromLogin,
       examSchedule: updatedTeacherConfig.examSchedule,
       teacherConfigs: updatedTeacherConfigs,
     });
@@ -7231,6 +7249,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       checked={requireOfflineMode}
                       onChange={(e) => setRequireOfflineMode(e.target.checked)}
                       className="w-5 h-5 rounded text-orange-600 focus:ring-orange-500 cursor-pointer shrink-0 ml-3"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between p-3.5 bg-gradient-to-r from-amber-50/80 to-orange-50/80 rounded-xl border-2 border-amber-300 cursor-pointer sm:col-span-2 shadow-xs hover:border-amber-400 transition-colors">
+                    <div className="pr-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                          <EyeOff className="w-4 h-4 text-amber-700" /> Sembunyikan Menu Pengelola Panel Ujian di Layar Login (Hidden Menu)
+                        </span>
+                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                          hideAdminMenuFromLogin
+                            ? 'bg-amber-200 text-amber-900 border-amber-400'
+                            : 'bg-white text-slate-600 border-slate-300'
+                        }`}>
+                          {hideAdminMenuFromLogin ? '🔒 Hidden Menu Aktif' : '🔓 Selalu Tampil Normal'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-600 font-medium block mt-1 leading-relaxed">
+                        Menyembunyikan tombol & tab "Panel Pengelola Ujian" dari halaman login depan. Siswa hanya akan melihat halaman Peserta Siswa. Guru & Proktor dapat membuka menu pengelola dengan <b>mengetuk Logo CBT 5 kali berturut-turut</b>, menekan kombinasi <b>Ctrl + Shift + A</b>, atau mengklik ikon gembok rahasia di footer.
+                      </span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={hideAdminMenuFromLogin}
+                      onChange={(e) => setHideAdminMenuFromLogin(e.target.checked)}
+                      className="w-5 h-5 rounded text-amber-600 focus:ring-amber-500 cursor-pointer shrink-0 ml-3"
                     />
                   </label>
                 </div>

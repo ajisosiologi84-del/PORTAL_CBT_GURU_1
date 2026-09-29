@@ -121,6 +121,7 @@ export interface ExamScheduleConfig {
   strictAntiCheating?: boolean;
   maxCheatingAllowed?: number;
   requireOfflineMode?: boolean; // Jika diaktifkan oleh Guru/Pengawas, siswa wajib beralih ke Mode Offline / Airplane mode
+  hideAdminMenuFromLogin?: boolean; // Sembunyikan menu Pengelola dari layar login (Hidden Menu)
 }
 
 export interface TeacherConfigOverride {
@@ -134,6 +135,7 @@ export interface TeacherConfigOverride {
   allowReview?: boolean;
   maxQuestionsToDisplay?: number;
   maxAttempts?: number;
+  hideAdminMenuFromLogin?: boolean;
   kopSekolah?: KopSekolahConfig;
   examSchedule?: ExamScheduleConfig;
 }
@@ -187,6 +189,7 @@ export interface AppConfig {
   youtubeGuideUrl?: string; // Link Video YouTube Panduan Guru (dikeloa Admin)
   customWarningAudioUrl?: string; // URL Audio MP3 Peringatan Kecurangan
   enableWarningAudio?: boolean; // Sakelar Suara Audio Peringatan (default true)
+  hideAdminMenuFromLogin?: boolean; // Sembunyikan menu Panel Pengelola Ujian dari halaman login (Hidden Menu Pengelola)
   examSchedule?: ExamScheduleConfig; // Detail Pengaturan Jadwal & Ketentuan Ujian
   scheduleTokens?: ExamScheduleToken[]; // Daftar Tabel Token & Jadwal Ujian Terstruktur per Paket
   broadcastAlert?: BroadcastAlert | null; // Pesan Peringatan Broadcast Proktor Real-time

@@ -1,6 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AppConfig, StudentInfo, StudentUser, StudentResult, TeacherUser, ExamScheduleToken } from '../types';
-import { User, Key, LogIn, Settings, AlertCircle, KeyRound, Users, GraduationCap, BookOpen, UserCheck, FileUp, HelpCircle, CheckCircle2, Download, Sparkles, Building2, Trophy, Crown, Medal, Award, Flame, ChevronDown, ChevronUp, FileSpreadsheet, RefreshCw, FileJson } from 'lucide-react';
+import {
+  User,
+  Key,
+  LogIn,
+  Settings,
+  AlertCircle,
+  KeyRound,
+  Users,
+  GraduationCap,
+  BookOpen,
+  UserCheck,
+  FileUp,
+  HelpCircle,
+  CheckCircle2,
+  Download,
+  Sparkles,
+  Building2,
+  Trophy,
+  Crown,
+  Medal,
+  Award,
+  Flame,
+  ChevronDown,
+  ChevronUp,
+  FileSpreadsheet,
+  RefreshCw,
+  FileJson,
+  Lock,
+  Unlock,
+  ShieldCheck,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 import { CbtLogo } from './CbtLogo';
 import { decryptAppBackup } from '../utils/crypto';
 import { loadTeachersFromFirebase, loadAdminsFromFirebase } from '../lib/firebase';
@@ -25,6 +57,122 @@ export const LoginView: React.FC<LoginViewProps> = ({
 }) => {
   const [activeMode, setActiveMode] = useState<'student' | 'admin'>('student');
   const [showLeaderboard, setShowLeaderboard] = useState(true);
+
+  // Hidden Menu Pengelola Panel Ujian State
+  const [isMenuHidden, setIsMenuHidden] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('admin') === '1' || params.get('mode') === 'admin' || params.get('pengelola') === '1') {
+        return false;
+      }
+      const localStored = localStorage.getItem('cbt_hide_admin_menu');
+      if (localStored !== null) {
+        return localStored === 'true';
+      }
+    }
+    if (config.hideAdminMenuFromLogin !== undefined) {
+      return config.hideAdminMenuFromLogin;
+    }
+    if (config.examSchedule?.hideAdminMenuFromLogin !== undefined) {
+      return config.examSchedule.hideAdminMenuFromLogin;
+    }
+    return true; // Default: hidden menu aktif demi keamanan ujian siswa
+  });
+
+  const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('admin') === '1' || params.get('mode') === 'admin' || params.get('pengelola') === '1') {
+        return true;
+      }
+      const localStored = localStorage.getItem('cbt_hide_admin_menu');
+      if (localStored === 'false') {
+        return true;
+      }
+    }
+    if (config.hideAdminMenuFromLogin === false || config.examSchedule?.hideAdminMenuFromLogin === false) {
+      return true;
+    }
+    return false;
+  });
+
+  const [logoClicks, setLogoClicks] = useState<number>(0);
+  const logoClickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Logo Click Secret Trigger: 5 clicks within 2.5s
+  const handleLogoClick = () => {
+    if (logoClickTimeoutRef.current) {
+      clearTimeout(logoClickTimeoutRef.current);
+    }
+    const nextCount = logoClicks + 1;
+    if (nextCount >= 5) {
+      setLogoClicks(0);
+      setIsAdminUnlocked(true);
+      setActiveMode('admin');
+      setErrorMsg('');
+      setSuccessMsg('🔓 Akses Rahasia Berhasil! Menu Pengelola Panel Ujian Terbuka.');
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } else {
+      setLogoClicks(nextCount);
+      logoClickTimeoutRef.current = setTimeout(() => {
+        setLogoClicks(0);
+      }, 2500);
+    }
+  };
+
+  // Keyboard shortcut listener: Ctrl+Shift+A or Alt+P
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key.toLowerCase() === 'a' || e.key.toLowerCase() === 'p')) ||
+        (e.altKey && (e.key.toLowerCase() === 'p' || e.key.toLowerCase() === 'a'))
+      ) {
+        e.preventDefault();
+        setIsAdminUnlocked(true);
+        setActiveMode((prev) => (prev === 'admin' ? 'student' : 'admin'));
+        setErrorMsg('');
+        setSuccessMsg('🔓 Akses Rahasia Pengelola Ujian Aktif (Shortcut Keyboard)!');
+        setTimeout(() => setSuccessMsg(''), 4000);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Sync if config.hideAdminMenuFromLogin changes
+  useEffect(() => {
+    if (config.hideAdminMenuFromLogin !== undefined) {
+      setIsMenuHidden(config.hideAdminMenuFromLogin);
+    } else if (config.examSchedule?.hideAdminMenuFromLogin !== undefined) {
+      setIsMenuHidden(config.examSchedule.hideAdminMenuFromLogin);
+    }
+  }, [config.hideAdminMenuFromLogin, config.examSchedule?.hideAdminMenuFromLogin]);
+
+  const handleToggleMenuHiddenSetting = () => {
+    const nextVal = !isMenuHidden;
+    setIsMenuHidden(nextVal);
+    try {
+      localStorage.setItem('cbt_hide_admin_menu', String(nextVal));
+    } catch (e) {}
+
+    if (onSaveConfig) {
+      onSaveConfig({
+        ...config,
+        hideAdminMenuFromLogin: nextVal,
+        examSchedule: {
+          ...(config.examSchedule || {}),
+          hideAdminMenuFromLogin: nextVal,
+        },
+      });
+    }
+
+    if (nextVal) {
+      setSuccessMsg('🔒 Menu Pengelola sekarang DISEMBUNYIKAN dari halaman login depan (Hidden Menu Aktif).');
+    } else {
+      setSuccessMsg('🔓 Menu Pengelola sekarang DITAMPILKAN secara publik di halaman login.');
+    }
+    setTimeout(() => setSuccessMsg(''), 4000);
+  };
   
   // Student Login Fields
   const [nis, setNis] = useState('');
@@ -467,7 +615,25 @@ export const LoginView: React.FC<LoginViewProps> = ({
             {/* Header */}
             <div className="bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-950 p-6 text-center text-white relative overflow-hidden flex flex-col items-center justify-center">
               <div className="absolute -right-6 -top-6 w-24 h-24 bg-blue-500/10 rounded-full blur-xl pointer-events-none"></div>
-              <CbtLogo className="w-20 h-20 mb-2 drop-shadow-md" />
+
+              {/* Logo with secret 5x click trigger */}
+              <div className="relative inline-flex flex-col items-center">
+                <button
+                  type="button"
+                  onClick={handleLogoClick}
+                  className="focus:outline-none transition-transform active:scale-90 cursor-pointer"
+                  title="Portal CBT Guru (Ketuk 5x untuk Akses Menu Rahasia Pengelola)"
+                >
+                  <CbtLogo className="w-20 h-20 mb-2 drop-shadow-md" />
+                </button>
+                {logoClicks > 1 && (
+                  <div className="absolute -bottom-1.5 bg-amber-400 text-amber-950 font-black text-[10px] px-2.5 py-0.5 rounded-full shadow-lg whitespace-nowrap animate-bounce z-20 border border-amber-300 flex items-center gap-1">
+                    <KeyRound className="w-3 h-3 text-amber-900" />
+                    <span>{5 - logoClicks} ketukan lagi untuk Pengelola</span>
+                  </div>
+                )}
+              </div>
+
               <h1 className="text-xl font-black tracking-tight">Portal CBT Guru</h1>
               <p className="text-blue-200 text-xs mt-0.5 font-medium">
                 {config.mapel || 'Mata Pelajaran'} - {config.mapelTitle || 'Assessment TKA SMA 2026'}
@@ -491,39 +657,83 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </div>
             </div>
 
-            {/* Mode Selector Switcher */}
-            <div className="p-1.5 bg-slate-100 mx-4 sm:mx-6 mt-4 rounded-2xl flex border border-slate-200 gap-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveMode('student');
-                  setErrorMsg('');
-                  setSuccessMsg('');
-                }}
-                className={`flex-1 py-2 rounded-xl font-bold text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  activeMode === 'student'
-                    ? 'bg-white text-blue-700 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5" /> Peserta Ujian (Siswa)
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveMode('admin');
-                  setErrorMsg('');
-                  setSuccessMsg('');
-                }}
-                className={`flex-1 py-2 rounded-xl font-bold text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  activeMode === 'admin'
-                    ? 'bg-white text-blue-700 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <Settings className="w-3.5 h-3.5" /> Panel Pengelola Ujian
-              </button>
-            </div>
+            {/* Mode Selector / Hidden Menu Logic */}
+            {isMenuHidden && !isAdminUnlocked ? (
+              <div className="mx-4 sm:mx-6 mt-4 p-2.5 bg-slate-50 border border-slate-200/90 rounded-2xl flex items-center justify-between shadow-2xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                    <GraduationCap className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-black text-slate-800 uppercase tracking-wide">
+                      Portal Peserta Ujian
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium">
+                      Silakan masukkan NIS & Token dari Guru
+                    </div>
+                  </div>
+                </div>
+                <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3 text-blue-600" /> Siswa
+                </span>
+              </div>
+            ) : (
+              <div className="mx-4 sm:mx-6 mt-4 flex flex-col gap-1.5">
+                <div className="p-1.5 bg-slate-100 rounded-2xl flex border border-slate-200 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveMode('student');
+                      setErrorMsg('');
+                      setSuccessMsg('');
+                    }}
+                    className={`flex-1 py-2 rounded-xl font-bold text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      activeMode === 'student'
+                        ? 'bg-white text-blue-700 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5" /> Peserta Ujian (Siswa)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveMode('admin');
+                      setErrorMsg('');
+                      setSuccessMsg('');
+                    }}
+                    className={`flex-1 py-2 rounded-xl font-bold text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      activeMode === 'admin'
+                        ? 'bg-white text-blue-700 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <Settings className="w-3.5 h-3.5" /> Panel Pengelola Ujian
+                  </button>
+                </div>
+
+                {isAdminUnlocked && isMenuHidden && (
+                  <div className="flex items-center justify-between px-1 text-[10px]">
+                    <span className="text-amber-800 bg-amber-50 border border-amber-300/80 px-2 py-0.5 rounded-lg font-bold flex items-center gap-1">
+                      <Unlock className="w-3 h-3 text-amber-600" /> Akses Rahasia Pengelola Terbuka
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMode('student');
+                        setIsAdminUnlocked(false);
+                        setSuccessMsg('🔒 Menu Pengelola berhasil dikunci dan disembunyikan kembali.');
+                        setTimeout(() => setSuccessMsg(''), 3000);
+                      }}
+                      className="text-slate-500 hover:text-red-600 font-bold flex items-center gap-1 cursor-pointer transition"
+                      title="Kunci dan sembunyikan kembali menu pengelola sebelum diserahkan ke siswa"
+                    >
+                      <EyeOff className="w-3 h-3" /> Sembunyikan Menu
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Form Body */}
             <div className="p-5 sm:p-6 space-y-4">
@@ -592,6 +802,40 @@ export const LoginView: React.FC<LoginViewProps> = ({
               ) : (
                 /* Panel Kelola Ujian Form */
                 <>
+                  {/* Proctor Secret Access Header */}
+                  <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl flex items-center justify-between text-white text-xs shadow-md">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-indigo-600 text-white rounded-lg">
+                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-white flex items-center gap-1.5">
+                          Panel Pengelola Ujian
+                          <span className="bg-amber-400/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded font-mono font-bold border border-amber-400/30">
+                            Proktor & Guru
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-300">
+                          Khusus Akun Guru Pengampu & Admin CBT
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMode('student');
+                        setIsAdminUnlocked(false);
+                        setAdminUser('');
+                        setAdminPass('');
+                      }}
+                      className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white px-2.5 py-1.5 rounded-xl border border-slate-700 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer active:scale-95"
+                      title="Kembali ke halaman siswa dan sembunyikan panel pengelola"
+                    >
+                      <EyeOff className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Tutup</span>
+                    </button>
+                  </div>
+
                   <form onSubmit={handleAdminSubmit} className="space-y-3.5">
                     <div>
                       <label className="block text-gray-700 text-xs font-bold uppercase tracking-wider mb-1" htmlFor="adminUser">
@@ -666,10 +910,33 @@ export const LoginView: React.FC<LoginViewProps> = ({
                       Browser baru belum terdaftar akun guru? Tarik akun langsung dari Google Sheets.
                     </p>
                   </div>
+
+                  {/* Quick Toggle Sembunyikan Menu Pengelola */}
+                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs mt-1">
+                    <div className="flex items-center gap-1.5 text-slate-700 font-semibold text-[11px]">
+                      {isMenuHidden ? (
+                        <EyeOff className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      ) : (
+                        <Eye className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      )}
+                      <span>Sembunyikan Menu dari Siswa:</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleToggleMenuHiddenSetting}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition cursor-pointer ${
+                        isMenuHidden
+                          ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200'
+                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                      }`}
+                    >
+                      {isMenuHidden ? '🔒 Hidden Menu (Aktif)' : '🔓 Selalu Tampil'}
+                    </button>
+                  </div>
                 </>
               )}
 
-              {/* Quick Setting Ujian dengan File Paket JSON (Solusi B: Offline / Lab Komputer) */}
+              {/* Quick Setting Ujian dengan File Paket JSON (Solusi B: Offline / Lab Komputer) - Selalu tampil di bawah Masuk Ujian CBT Siswa */}
               <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
                 {config.driveDownloadUrl && (
                   <a
@@ -720,6 +987,19 @@ export const LoginView: React.FC<LoginViewProps> = ({
             <span className="bg-white text-slate-600 font-mono font-bold text-[10px] px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
               v2.0.0
             </span>
+            <button
+              type="button"
+              onClick={() => {
+                setIsAdminUnlocked(true);
+                setActiveMode('admin');
+                setSuccessMsg('🔓 Mode Pengelola Ujian Dibuka (Akses Cepat)');
+                setTimeout(() => setSuccessMsg(''), 3000);
+              }}
+              title="Akses Rahasia Pengelola Ujian (Tekan Ctrl+Shift+A atau ketuk Logo 5x)"
+              className="text-slate-400 hover:text-indigo-600 p-1 rounded-md transition-colors cursor-pointer"
+            >
+              <Lock className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
