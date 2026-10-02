@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Question } from '../types';
 import { formatQuestionText, isQuestionAnswerCorrect, getQuestionScoreAndCorrectness, getStudentAnswerDisplay, getCorrectAnswerDisplay } from '../utils/questionFormatter';
-import { CheckCircle2, XCircle, Microscope, LogOut, BookOpen, Layers, CheckSquare } from 'lucide-react';
+import { CheckCircle2, XCircle, Microscope, LogOut, BookOpen, Layers, CheckSquare, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
 interface ReviewViewProps {
   questions: Question[];
@@ -13,6 +13,36 @@ export const ReviewView: React.FC<ReviewViewProps> = ({ questions = [], answers 
   const safeQuestions = Array.isArray(questions) ? questions : [];
   const safeAnswers = Array.isArray(answers) ? answers : [];
 
+  const [reviewZoom, setReviewZoom] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('cbt_exam_zoom_level');
+        if (saved) {
+          const parsed = parseInt(saved, 10);
+          if (!isNaN(parsed) && parsed >= 85 && parsed <= 175) return parsed;
+        }
+      } catch (e) {}
+    }
+    return 100;
+  });
+
+  const handleZoom = (delta: number) => {
+    setReviewZoom((prev) => {
+      const next = Math.min(175, Math.max(85, prev + delta));
+      try {
+        localStorage.setItem('cbt_exam_zoom_level', String(next));
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const handleResetZoom = () => {
+    setReviewZoom(100);
+    try {
+      localStorage.setItem('cbt_exam_zoom_level', '100');
+    } catch (e) {}
+  };
+
   return (
     <div className="flex-1 flex flex-col h-screen bg-slate-100 fixed inset-0 z-50 overflow-hidden">
       {/* Header */}
@@ -23,18 +53,55 @@ export const ReviewView: React.FC<ReviewViewProps> = ({ questions = [], answers 
           </h1>
           <p className="text-slate-300 text-[10px] sm:text-xs mt-0.5 truncate hidden sm:block">Analisis HOTS - Perubahan Sosial & Globalisasi</p>
         </div>
-        <button
-          onClick={onExit}
-          className="min-h-[44px] bg-slate-800 hover:bg-slate-700 active:bg-slate-950 px-3.5 py-2 rounded-xl font-extrabold transition-all text-xs sm:text-sm flex items-center gap-1.5 border border-slate-700 active:scale-95 shrink-0 cursor-pointer shadow-xs"
-          title="Kembali ke Halaman Utama / Portal"
-        >
-          <LogOut className="w-4 h-4 text-amber-400 shrink-0" />
-          <span className="hidden sm:inline">Kembali ke </span>Utama
-        </button>
+
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Zoom In & Zoom Out Controls */}
+          <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl border border-slate-700">
+            <button
+              type="button"
+              onClick={() => handleZoom(-15)}
+              disabled={reviewZoom <= 85}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 transition cursor-pointer active:scale-90"
+              title="Perkecil Teks & Gambar (Zoom Out)"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleResetZoom}
+              className="px-2 py-0.5 rounded-md font-mono font-bold text-xs text-amber-300 hover:bg-slate-700 transition cursor-pointer flex items-center gap-1"
+              title="Reset Zoom ke 100%"
+            >
+              <span>{reviewZoom}%</span>
+              {reviewZoom !== 100 && <RotateCcw className="w-2.5 h-2.5 text-slate-400" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleZoom(15)}
+              disabled={reviewZoom >= 175}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 transition cursor-pointer active:scale-90"
+              title="Perbesar Teks & Gambar (Zoom In)"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+          </div>
+
+          <button
+            onClick={onExit}
+            className="min-h-[44px] bg-slate-800 hover:bg-slate-700 active:bg-slate-950 px-3.5 py-2 rounded-xl font-extrabold transition-all text-xs sm:text-sm flex items-center gap-1.5 border border-slate-700 active:scale-95 shrink-0 cursor-pointer shadow-xs"
+            title="Kembali ke Halaman Utama / Portal"
+          >
+            <LogOut className="w-4 h-4 text-amber-400 shrink-0" />
+            <span className="hidden sm:inline">Kembali ke </span>Utama
+          </button>
+        </div>
       </header>
 
       {/* Review List */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
+      <div
+        className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar transition-[font-size] duration-150 ease-out"
+        style={{ fontSize: `${reviewZoom}%` }}
+      >
         <div className="max-w-4xl mx-auto space-y-6">
           {safeQuestions.map((q, index) => {
             const userAnsId = safeAnswers[index] || null;

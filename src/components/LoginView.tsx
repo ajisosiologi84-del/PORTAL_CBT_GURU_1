@@ -12,6 +12,7 @@ import {
   BookOpen,
   UserCheck,
   FileUp,
+  Upload,
   HelpCircle,
   CheckCircle2,
   Download,
@@ -798,6 +799,48 @@ export const LoginView: React.FC<LoginViewProps> = ({
                   >
                     <LogIn className="w-4 h-4" /> Masuk Ujian CBT (Siswa)
                   </button>
+
+                  {/* Menu Upload Paket Soal Tepat di Bawah Tombol Masuk Ujian CBT Siswa */}
+                  <div className="pt-3.5 mt-2 border-t border-slate-200/90 flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <Upload className="w-3.5 h-3.5 text-blue-600" /> Menu Upload Paket Soal
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-semibold bg-slate-100 px-1.5 py-0.5 rounded">Format .json</span>
+                    </div>
+
+                    {config.driveDownloadUrl && (
+                      <a
+                        href={config.driveDownloadUrl.startsWith('http') ? config.driveDownloadUrl : `https://${config.driveDownloadUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-sky-50 hover:bg-sky-100 active:bg-sky-200 text-sky-900 border border-sky-300 rounded-xl p-2.5 text-xs font-bold flex items-center justify-center gap-2 transition active:scale-98 shadow-xs text-center cursor-pointer"
+                      >
+                        <Download className="w-4 h-4 text-sky-600 shrink-0" />
+                        <span>Download Paket Soal (.json) dari Google Drive</span>
+                      </a>
+                    )}
+
+                    <label className="bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-900 border-2 border-amber-300 rounded-xl p-2.5 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition active:scale-98 shadow-xs hover:border-amber-400">
+                      <Upload className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>Upload Paket Soal (.json)</span>
+                      <input
+                        type="file"
+                        accept=".json"
+                        onChange={handleImportConfigJson}
+                        className="hidden"
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowHelpModal(true)}
+                      className="text-[11px] font-semibold text-slate-500 hover:text-indigo-600 flex items-center justify-center gap-1 py-1 cursor-pointer transition"
+                    >
+                      <HelpCircle className="w-3.5 h-3.5 text-indigo-500" />
+                      <span>Panduan Setting Paket .json & Token Terbaru</span>
+                    </button>
+                  </div>
                 </form>
               ) : (
                 /* Panel Kelola Ujian Form */
@@ -933,43 +976,43 @@ export const LoginView: React.FC<LoginViewProps> = ({
                       {isMenuHidden ? '🔒 Hidden Menu (Aktif)' : '🔓 Selalu Tampil'}
                     </button>
                   </div>
+
+                  {/* Quick Setting Ujian dengan File Paket JSON untuk Pengelola */}
+                  <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
+                    {config.driveDownloadUrl && (
+                      <a
+                        href={config.driveDownloadUrl.startsWith('http') ? config.driveDownloadUrl : `https://${config.driveDownloadUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-sky-50 hover:bg-sky-100 active:bg-sky-200 text-sky-900 border border-sky-300 rounded-xl p-2.5 text-xs font-bold flex items-center justify-center gap-2 transition active:scale-98 shadow-xs text-center cursor-pointer"
+                      >
+                        <Download className="w-4 h-4 text-sky-600 shrink-0" />
+                        <span>Download Paket Soal (.json) dari Google Drive</span>
+                      </a>
+                    )}
+
+                    <label className="bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl p-2.5 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition active:scale-98 shadow-xs">
+                      <FileJson className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>Setting Ujian dengan File Paket (.json)</span>
+                      <input
+                        type="file"
+                        accept=".json"
+                        onChange={handleImportConfigJson}
+                        className="hidden"
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowHelpModal(true)}
+                      className="text-[11px] font-semibold text-slate-500 hover:text-indigo-600 flex items-center justify-center gap-1 py-1 cursor-pointer"
+                    >
+                      <HelpCircle className="w-3.5 h-3.5 text-indigo-500" />
+                      <span>Panduan Setting Paket .json & Token Terbaru</span>
+                    </button>
+                  </div>
                 </>
               )}
-
-              {/* Quick Setting Ujian dengan File Paket JSON (Solusi B: Offline / Lab Komputer) - Selalu tampil di bawah Masuk Ujian CBT Siswa */}
-              <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
-                {config.driveDownloadUrl && (
-                  <a
-                    href={config.driveDownloadUrl.startsWith('http') ? config.driveDownloadUrl : `https://${config.driveDownloadUrl}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-sky-50 hover:bg-sky-100 active:bg-sky-200 text-sky-900 border border-sky-300 rounded-xl p-2.5 text-xs font-bold flex items-center justify-center gap-2 transition active:scale-98 shadow-xs text-center cursor-pointer"
-                  >
-                    <Download className="w-4 h-4 text-sky-600 shrink-0" />
-                    <span>Download Paket Soal (.json) dari Google Drive</span>
-                  </a>
-                )}
-
-                <label className="bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl p-2.5 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition active:scale-98 shadow-xs">
-                  <FileJson className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>Setting Ujian dengan File Paket (.json)</span>
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={handleImportConfigJson}
-                    className="hidden"
-                  />
-                </label>
-
-                <button
-                  type="button"
-                  onClick={() => setShowHelpModal(true)}
-                  className="text-[11px] font-semibold text-slate-500 hover:text-indigo-600 flex items-center justify-center gap-1 py-1 cursor-pointer"
-                >
-                  <HelpCircle className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>Panduan Setting Paket .json & Token Terbaru</span>
-                </button>
-              </div>
             </div>
           </div>
 

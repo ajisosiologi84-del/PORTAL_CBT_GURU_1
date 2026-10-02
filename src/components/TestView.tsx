@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Question, BroadcastAlert } from '../types';
 import { formatQuestionText, renderMathInText } from '../utils/questionFormatter';
-import { BookOpen, Clock, Flag, ChevronLeft, ChevronRight, Brain, Grid, X, CheckCircle2, ShieldAlert, Lock, Megaphone, Bell, AlertTriangle, ArrowLeft, Home, Layers, ListChecks, Maximize2, Split, ShieldCheck } from 'lucide-react';
+import { BookOpen, Clock, Flag, ChevronLeft, ChevronRight, Brain, Grid, X, CheckCircle2, ShieldAlert, Lock, Megaphone, Bell, AlertTriangle, ArrowLeft, Home, Layers, ListChecks, Maximize2, Split, ShieldCheck, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { requestAppFullscreen, isAppFullscreen, checkSplitScreenViolation, clearClipboard, isIOSDevice, isIOSStandalone } from '../utils/antiCheating';
 
 interface TestViewProps {
@@ -63,6 +63,42 @@ export const TestView: React.FC<TestViewProps> = ({
   const [isFullscreenMode, setIsFullscreenMode] = useState<boolean>(true);
   const [splitScreenInfo, setSplitScreenInfo] = useState<{ isSplit: boolean; reason: string }>({ isSplit: false, reason: '' });
   const [selectedBentukFilter, setSelectedBentukFilter] = useState<string>('ALL');
+
+  // In-App Zoom State for Question Text & Images (Safe from Anti-Cheating & Fullscreen Triggers)
+  const [zoomLevel, setZoomLevel] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('cbt_exam_zoom_level');
+        if (saved) {
+          const parsed = parseInt(saved, 10);
+          if (!isNaN(parsed) && parsed >= 85 && parsed <= 175) {
+            return parsed;
+          }
+        }
+      } catch (e) {}
+    }
+    return 100;
+  });
+
+  const [previewModalImage, setPreviewModalImage] = useState<string | null>(null);
+  const [modalImageZoom, setModalImageZoom] = useState<number>(100);
+
+  const handleZoomStep = (delta: number) => {
+    setZoomLevel((prev) => {
+      const next = Math.min(175, Math.max(85, prev + delta));
+      try {
+        localStorage.setItem('cbt_exam_zoom_level', String(next));
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const handleResetZoom = () => {
+    setZoomLevel(100);
+    try {
+      localStorage.setItem('cbt_exam_zoom_level', '100');
+    } catch (e) {}
+  };
 
   // Continuous Fullscreen & Split Screen Monitor
   useEffect(() => {
@@ -327,6 +363,36 @@ export const TestView: React.FC<TestViewProps> = ({
             <span>{warnings}/{maxWarnings}</span>
           </div>
 
+          {/* Header Quick Zoom Controller (Semua Layar Tablet & Desktop) */}
+          <div className="hidden sm:flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 min-h-[42px] shadow-2xs">
+            <button
+              type="button"
+              onClick={() => handleZoomStep(-15)}
+              disabled={zoomLevel <= 85}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-slate-700 hover:bg-white hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer active:scale-95"
+              title="Perkecil Teks & Gambar (Zoom Out)"
+            >
+              <ZoomOut className="w-4 h-4 text-slate-700" />
+            </button>
+            <button
+              type="button"
+              onClick={handleResetZoom}
+              className="px-2 py-0.5 rounded-md font-mono font-bold text-xs text-slate-800 hover:bg-white transition cursor-pointer"
+              title="Reset Zoom ke 100%"
+            >
+              {zoomLevel}%
+            </button>
+            <button
+              type="button"
+              onClick={() => handleZoomStep(15)}
+              disabled={zoomLevel >= 175}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-slate-700 hover:bg-white hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer active:scale-95"
+              title="Perbesar Teks & Gambar (Zoom In)"
+            >
+              <ZoomIn className="w-4 h-4 text-slate-700" />
+            </button>
+          </div>
+
           {/* Timer Display */}
           <div className="bg-slate-100 px-2 sm:px-3.5 py-1 sm:py-1.5 rounded-xl border border-slate-200 flex items-center gap-1.5 sm:gap-2.5 min-h-[42px]">
             <Clock className={`w-4 h-4 sm:w-5 sm:h-5 ${isTimeCritical ? 'text-red-500 animate-pulse' : 'text-slate-500'}`} />
@@ -393,39 +459,109 @@ export const TestView: React.FC<TestViewProps> = ({
                   ⚡ Bobot: {currentQuestion?.poin || 10} Poin
                 </span>
               </div>
-              <span className="text-[11px] sm:text-xs font-bold text-gray-400 flex items-center gap-1.5">
-                <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500" /> Penalaran HOTS
-              </span>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Tombol ZOOM In & ZOOM Out Soal & Gambar (Aman dari Layar Penuh / Fullscreen) */}
+                <div className="flex items-center gap-1.5 bg-gradient-to-r from-blue-50 to-indigo-50/80 p-1 sm:p-1.5 rounded-2xl border-2 border-blue-200/90 shadow-xs transition-all">
+                  <button
+                    type="button"
+                    onClick={() => handleZoomStep(-15)}
+                    disabled={zoomLevel <= 85}
+                    className="min-h-[34px] px-2 sm:px-2.5 rounded-xl flex items-center gap-1.5 text-slate-700 bg-white hover:bg-blue-600 hover:text-white border border-slate-200 hover:border-blue-600 disabled:opacity-35 disabled:cursor-not-allowed transition cursor-pointer active:scale-95 shadow-2xs font-extrabold text-xs group"
+                    title="Perkecil Teks & Gambar Soal (Zoom Out) - 100% Aman dari Fullscreen"
+                  >
+                    <ZoomOut className="w-4 h-4 text-blue-600 group-hover:text-white shrink-0 transition-colors" />
+                    <span className="hidden xs:inline">Zoom Out</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetZoom}
+                    className="min-h-[34px] px-2.5 py-1 rounded-xl font-mono font-black text-xs text-blue-900 bg-blue-100/70 hover:bg-white hover:text-blue-700 border border-blue-200 transition cursor-pointer flex items-center gap-1 select-none shadow-2xs"
+                    title="Klik untuk Reset Ukuran Normal (100%)"
+                  >
+                    <span>{zoomLevel}%</span>
+                    {zoomLevel !== 100 && <RotateCcw className="w-3 h-3 text-blue-500" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleZoomStep(15)}
+                    disabled={zoomLevel >= 175}
+                    className="min-h-[34px] px-2 sm:px-2.5 rounded-xl flex items-center gap-1.5 text-slate-700 bg-white hover:bg-blue-600 hover:text-white border border-slate-200 hover:border-blue-600 disabled:opacity-35 disabled:cursor-not-allowed transition cursor-pointer active:scale-95 shadow-2xs font-extrabold text-xs group"
+                    title="Perbesar Teks & Gambar Soal (Zoom In) - 100% Aman dari Fullscreen"
+                  >
+                    <ZoomIn className="w-4 h-4 text-blue-600 group-hover:text-white shrink-0 transition-colors" />
+                    <span className="hidden xs:inline">Zoom In</span>
+                  </button>
+                </div>
+
+                <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-1 rounded-xl border border-emerald-200">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Zoom Aman Fullscreen
+                </span>
+
+                <span className="text-[11px] sm:text-xs font-bold text-gray-400 items-center gap-1.5 hidden sm:flex">
+                  <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500" /> Penalaran HOTS
+                </span>
+              </div>
             </div>
 
-            {/* Question Image & Text Layout based on imagePosition */}
-            {(() => {
-              const imgPos = currentQuestion?.imagePosition || 'top';
-              const qImages = currentQuestion?.images && Array.isArray(currentQuestion.images) && currentQuestion.images.length > 0
-                ? currentQuestion.images.filter(Boolean)
-                : (currentQuestion?.image?.trim() ? [currentQuestion.image.trim()] : []);
+            {/* Scalable Question Body Container (In-App Zoom In & Zoom Out) */}
+            <div
+              className="flex-1 flex flex-col transition-[font-size] duration-150 ease-out"
+              style={{
+                fontSize: `${zoomLevel}%`,
+              }}
+            >
+              {/* Question Image & Text Layout based on imagePosition */}
+              {(() => {
+                const imgPos = currentQuestion?.imagePosition || 'top';
+                const qImages = currentQuestion?.images && Array.isArray(currentQuestion.images) && currentQuestion.images.length > 0
+                  ? currentQuestion.images.filter(Boolean)
+                  : (currentQuestion?.image?.trim() ? [currentQuestion.image.trim()] : []);
 
-              const hasImg = qImages.length > 0;
+                const hasImg = qImages.length > 0;
 
-              const renderImageBlock = () => (
-                <div className={`my-4 grid gap-3 ${qImages.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
-                  {qImages.map((imgSrc, idx) => (
-                    <div key={idx} className="flex justify-center bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 shadow-xs">
-                      <img
-                        src={imgSrc}
-                        alt={`Lampiran Soal #${idx + 1}`}
-                        className="max-h-72 sm:max-h-96 w-auto object-contain rounded-xl border border-slate-100"
-                      />
-                    </div>
-                  ))}
-                </div>
-              );
+                const renderImageBlock = () => (
+                  <div className={`my-4 grid gap-3 ${qImages.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+                    {qImages.map((imgSrc, idx) => (
+                      <div
+                        key={idx}
+                        className="flex flex-col items-center justify-center bg-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs group relative overflow-hidden"
+                      >
+                        <img
+                          src={imgSrc}
+                          alt={`Lampiran Soal #${idx + 1}`}
+                          style={{
+                            maxHeight: `${Math.round(280 * (zoomLevel / 100))}px`,
+                          }}
+                          className="w-auto object-contain rounded-xl border border-slate-100 cursor-zoom-in transition-transform duration-200 group-hover:scale-[1.02]"
+                          onClick={() => {
+                            setPreviewModalImage(imgSrc);
+                            setModalImageZoom(100);
+                          }}
+                          title="Klik untuk perbesar penuh gambar ini (Lightbox Zoom)"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPreviewModalImage(imgSrc);
+                            setModalImageZoom(100);
+                          }}
+                          className="mt-2 text-[10px] sm:text-[11px] font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1 bg-white hover:bg-blue-50 px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs cursor-pointer active:scale-95 transition"
+                        >
+                          <Maximize2 className="w-3 h-3 text-blue-600" />
+                          <span>Perbesar Detail Gambar</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                );
 
               if (!hasImg) {
                 return (
                   <div className="mb-6">
                     <div
-                      className="text-sm sm:text-base md:text-lg text-gray-800 leading-relaxed font-medium overflow-x-auto"
+                      className="text-gray-800 leading-relaxed font-medium overflow-x-auto"
+                      style={{ fontSize: `${(1.08 * zoomLevel) / 100}rem`, lineHeight: 1.6 }}
                       dangerouslySetInnerHTML={{ __html: formatQuestionText(currentQuestion?.question) }}
                     />
                   </div>
@@ -439,7 +575,8 @@ export const TestView: React.FC<TestViewProps> = ({
                   <div className="mb-6 space-y-4">
                     {renderImageBlock()}
                     <div
-                      className="text-sm sm:text-base md:text-lg text-gray-800 leading-relaxed font-medium overflow-x-auto"
+                      className="text-gray-800 leading-relaxed font-medium overflow-x-auto"
+                      style={{ fontSize: `${(1.08 * zoomLevel) / 100}rem`, lineHeight: 1.6 }}
                       dangerouslySetInnerHTML={{ __html: formattedText }}
                     />
                   </div>
@@ -455,12 +592,14 @@ export const TestView: React.FC<TestViewProps> = ({
                   return (
                     <div className="mb-6 space-y-4">
                       <div
-                        className="text-sm sm:text-base md:text-lg text-gray-800 leading-relaxed font-medium overflow-x-auto"
+                        className="text-gray-800 leading-relaxed font-medium overflow-x-auto"
+                        style={{ fontSize: `${(1.08 * zoomLevel) / 100}rem`, lineHeight: 1.6 }}
                         dangerouslySetInnerHTML={{ __html: firstHalf }}
                       />
                       {renderImageBlock()}
                       <div
-                        className="text-sm sm:text-base md:text-lg text-gray-800 leading-relaxed font-medium overflow-x-auto"
+                        className="text-gray-800 leading-relaxed font-medium overflow-x-auto"
+                        style={{ fontSize: `${(1.08 * zoomLevel) / 100}rem`, lineHeight: 1.6 }}
                         dangerouslySetInnerHTML={{ __html: secondHalf }}
                       />
                     </div>
@@ -469,7 +608,8 @@ export const TestView: React.FC<TestViewProps> = ({
                 return (
                   <div className="mb-6 space-y-4">
                     <div
-                      className="text-sm sm:text-base md:text-lg text-gray-800 leading-relaxed font-medium overflow-x-auto"
+                      className="text-gray-800 leading-relaxed font-medium overflow-x-auto"
+                      style={{ fontSize: `${(1.08 * zoomLevel) / 100}rem`, lineHeight: 1.6 }}
                       dangerouslySetInnerHTML={{ __html: formattedText }}
                     />
                     {renderImageBlock()}
@@ -481,7 +621,8 @@ export const TestView: React.FC<TestViewProps> = ({
               return (
                 <div className="mb-6 space-y-4">
                   <div
-                    className="text-sm sm:text-base md:text-lg text-gray-800 leading-relaxed font-medium overflow-x-auto"
+                    className="text-gray-800 leading-relaxed font-medium overflow-x-auto"
+                    style={{ fontSize: `${(1.08 * zoomLevel) / 100}rem`, lineHeight: 1.6 }}
                     dangerouslySetInnerHTML={{ __html: formattedText }}
                   />
                   {renderImageBlock()}
@@ -586,14 +727,25 @@ export const TestView: React.FC<TestViewProps> = ({
                               return (
                                 <tr key={stId} className="hover:bg-slate-50/80 transition-colors">
                                   <td className="p-3 sm:p-4 text-center font-bold text-slate-400 border-r border-slate-100">{idx + 1}</td>
-                                  <td className="p-3 sm:p-4 border-r border-slate-100 leading-relaxed font-semibold text-slate-900">
+                                  <td
+                                    className="p-3 sm:p-4 border-r border-slate-100 leading-relaxed font-semibold text-slate-900"
+                                    style={{ fontSize: `${(0.95 * zoomLevel) / 100}rem` }}
+                                  >
                                     <div dangerouslySetInnerHTML={{ __html: renderMathInText(st.statement) }} />
                                     {st.image && (
                                       <div className="mt-2.5">
                                         <img
                                           src={st.image}
                                           alt={`Lampiran Gambar Pernyataan #${idx + 1}`}
-                                          className="max-h-48 sm:max-h-64 w-auto object-contain rounded-xl border border-slate-200 bg-white p-1 shadow-xs"
+                                          style={{
+                                            maxHeight: `${Math.round(200 * (zoomLevel / 100))}px`,
+                                          }}
+                                          className="w-auto object-contain rounded-xl border border-slate-200 bg-white p-1 shadow-xs cursor-zoom-in hover:shadow-md transition"
+                                          onClick={() => {
+                                            setPreviewModalImage(st.image!);
+                                            setModalImageZoom(100);
+                                          }}
+                                          title="Klik untuk perbesar penuh gambar pernyataan"
                                         />
                                       </div>
                                     )}
@@ -681,7 +833,8 @@ export const TestView: React.FC<TestViewProps> = ({
                                 {isSelected ? '✓' : opt.id}
                               </div>
                               <div
-                                className="text-gray-800 text-xs sm:text-base font-medium leading-relaxed pt-0.5 flex-1"
+                                className="text-gray-800 font-medium leading-relaxed pt-0.5 flex-1"
+                                style={{ fontSize: `${(0.98 * zoomLevel) / 100}rem` }}
                                 dangerouslySetInnerHTML={{ __html: renderMathInText(opt.text) }}
                               />
                             </div>
@@ -690,7 +843,16 @@ export const TestView: React.FC<TestViewProps> = ({
                                 <img
                                   src={opt.image}
                                   alt={`Gambar Opsi ${opt.id}`}
-                                  className="max-h-48 sm:max-h-60 w-auto object-contain rounded-xl border border-slate-200 bg-white p-1"
+                                  style={{
+                                    maxHeight: `${Math.round(200 * (zoomLevel / 100))}px`,
+                                  }}
+                                  className="w-auto object-contain rounded-xl border border-slate-200 bg-white p-1 cursor-zoom-in hover:shadow-md transition"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPreviewModalImage(opt.image!);
+                                    setModalImageZoom(100);
+                                  }}
+                                  title="Klik untuk perbesar penuh gambar opsi ini"
                                 />
                               </div>
                             )}
@@ -731,7 +893,8 @@ export const TestView: React.FC<TestViewProps> = ({
                               {opt.id}
                             </div>
                             <div
-                              className="text-gray-800 text-xs sm:text-base font-medium leading-relaxed pt-0.5 flex-1"
+                              className="text-gray-800 font-medium leading-relaxed pt-0.5 flex-1"
+                              style={{ fontSize: `${(0.98 * zoomLevel) / 100}rem` }}
                               dangerouslySetInnerHTML={{ __html: renderMathInText(opt.text) }}
                             />
                           </div>
@@ -740,7 +903,16 @@ export const TestView: React.FC<TestViewProps> = ({
                               <img
                                 src={opt.image}
                                 alt={`Gambar Opsi ${opt.id}`}
-                                className="max-h-48 sm:max-h-60 w-auto object-contain rounded-xl border border-slate-200 bg-white p-1"
+                                style={{
+                                  maxHeight: `${Math.round(200 * (zoomLevel / 100))}px`,
+                                }}
+                                className="w-auto object-contain rounded-xl border border-slate-200 bg-white p-1 cursor-zoom-in hover:shadow-md transition"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPreviewModalImage(opt.image!);
+                                  setModalImageZoom(100);
+                                }}
+                                title="Klik untuk perbesar penuh gambar opsi ini"
                               />
                             </div>
                           )}
@@ -751,6 +923,7 @@ export const TestView: React.FC<TestViewProps> = ({
                 </div>
               );
             })()}
+            </div>
 
             {/* Navigation Footer Controls */}
             <div className="mt-auto border-t border-gray-100 pt-4 sm:pt-6 flex justify-between items-center shrink-0 gap-2 flex-wrap">
@@ -773,6 +946,37 @@ export const TestView: React.FC<TestViewProps> = ({
                   Ragu-ragu
                 </span>
               </label>
+
+              {/* Quick Zoom Bar in Footer Navigation */}
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => handleZoomStep(-15)}
+                  disabled={zoomLevel <= 85}
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-slate-700 hover:bg-white hover:text-blue-600 disabled:opacity-35 transition cursor-pointer active:scale-90"
+                  title="Perkecil Teks & Gambar (Zoom Out) - Aman Fullscreen"
+                >
+                  <ZoomOut className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetZoom}
+                  className="px-2 py-0.5 rounded-md font-mono font-bold text-xs text-slate-800 hover:bg-white transition cursor-pointer flex items-center gap-1"
+                  title="Reset Zoom ke 100%"
+                >
+                  <span>{zoomLevel}%</span>
+                  {zoomLevel !== 100 && <RotateCcw className="w-2.5 h-2.5 text-blue-500" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleZoomStep(15)}
+                  disabled={zoomLevel >= 175}
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-slate-700 hover:bg-white hover:text-blue-600 disabled:opacity-35 transition cursor-pointer active:scale-90"
+                  title="Perbesar Teks & Gambar (Zoom In) - Aman Fullscreen"
+                >
+                  <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
+                </button>
+              </div>
 
               <div className="flex items-center gap-2">
                 {currentIndex < questions.length - 1 ? (
@@ -1208,6 +1412,107 @@ export const TestView: React.FC<TestViewProps> = ({
           >
             <Lock className="w-5 h-5" /> Kunci Layar Penuh & Lanjutkan Ujian
           </button>
+        </div>
+      )}
+
+      {/* Dedicated In-Exam Image Zoom Lightbox Modal (Aman dari Anti-Cheating & Fullscreen) */}
+      {previewModalImage && (
+        <div
+          className="fixed inset-0 z-[9990] bg-slate-950/92 backdrop-blur-md flex flex-col items-center justify-between p-3 sm:p-6 select-none animate-fade-in"
+          onClick={() => setPreviewModalImage(null)}
+        >
+          {/* Modal Header Controls */}
+          <div
+            className="w-full max-w-4xl flex items-center justify-between bg-slate-900/95 text-white px-4 py-2.5 rounded-2xl border border-slate-700/80 shadow-2xl shrink-0 z-10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2">
+              <Maximize2 className="w-4 h-4 text-sky-400" />
+              <span className="text-xs sm:text-sm font-bold text-white">
+                Pratinjau Detail Gambar Soal
+              </span>
+            </div>
+
+            {/* In-Modal Image Zoom Controls */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl border border-slate-700 shadow-inner">
+                <button
+                  type="button"
+                  onClick={() => setModalImageZoom((prev) => Math.max(50, prev - 25))}
+                  disabled={modalImageZoom <= 50}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-40 transition cursor-pointer active:scale-90"
+                  title="Perkecil Gambar (Zoom Out)"
+                >
+                  <ZoomOut className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalImageZoom(100)}
+                  className="px-2.5 py-0.5 rounded font-mono font-bold text-xs text-sky-300 hover:bg-slate-700 transition cursor-pointer"
+                  title="Reset Zoom ke 100%"
+                >
+                  {modalImageZoom}%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalImageZoom((prev) => Math.min(300, prev + 25))}
+                  disabled={modalImageZoom >= 300}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-40 transition cursor-pointer active:scale-90"
+                  title="Perbesar Gambar (Zoom In)"
+                >
+                  <ZoomIn className="w-3.5 h-3.5" />
+                </button>
+                {modalImageZoom !== 100 && (
+                  <button
+                    type="button"
+                    onClick={() => setModalImageZoom(100)}
+                    className="p-1 rounded text-slate-400 hover:text-white transition cursor-pointer"
+                    title="Reset Zoom"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPreviewModalImage(null)}
+                className="bg-slate-800 hover:bg-red-600 text-white px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1 text-xs font-bold shadow-md active:scale-95"
+                title="Tutup Pratinjau (Esc / Klik Luar)"
+              >
+                <X className="w-4 h-4" />
+                <span className="hidden sm:inline">Tutup</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Modal Image Display Area */}
+          <div
+            className="flex-1 w-full max-w-5xl flex items-center justify-center overflow-auto p-2 sm:p-4 my-auto custom-scrollbar"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="transition-transform duration-150 ease-out flex items-center justify-center">
+              <img
+                src={previewModalImage}
+                alt="Detail Gambar Ujian"
+                style={{
+                  transform: `scale(${modalImageZoom / 100})`,
+                  transformOrigin: 'center center',
+                  maxHeight: modalImageZoom <= 100 ? '78vh' : 'none',
+                  maxWidth: modalImageZoom <= 100 ? '90vw' : 'none',
+                }}
+                className="object-contain rounded-xl shadow-2xl border border-slate-700 bg-white/5"
+              />
+            </div>
+          </div>
+
+          {/* Modal Footer Note */}
+          <div
+            className="text-[11px] text-slate-400 text-center pb-1 select-none bg-slate-900/80 px-4 py-1 rounded-full border border-slate-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            🔍 Gunakan tombol <b>Zoom In (+)</b> / <b>Zoom Out (-)</b> untuk melihat gambar lebih detail. Klik <b>Tutup</b> atau area luar untuk kembali.
+          </div>
         </div>
       )}
     </div>
